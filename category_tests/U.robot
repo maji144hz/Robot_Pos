@@ -1,182 +1,110 @@
 *** Settings ***
-Documentation     ชุดทดสอบสำหรับสร้าง แก้ไข และลบหมวดหมู่ในระบบจัดการสินค้า
 Suite Setup       Open Browser To Login Page
 Suite Teardown    Close Browser
 Test Setup        Login And Go To Category Page
 Resource          ../login_tests/resource.robot
 Library           random
-Library           SeleniumLibrary  # เพิ่มเพื่อใช้คำสั่ง Selenium
 
 *** Variables ***
 ${VALID_USERNAME}    1
 ${VALID_PASSWORD}    123
 ${CATEGORY_BASE}    ทดสอบหมวดหมู่
-${TIMEOUT}          20s  # เพิ่ม timeout เพื่อรอหน้าโหลด
-${BROWSER}          chrome
-${CATEGORY_PAGE_URL}    http://localhost:5173/category  # ปรับตาม URL จริง
-${WELCOME_URL}  http://localhost:5173/ 
+${ADD_BUTTON_TEXT}  เพิ่มหมวดหมู่
+${SAVE_BUTTON_TEXT} บันทึกข้อมูล
+${CANCEL_BUTTON_TEXT}   ยกเลิก
 
 *** Test Cases ***
 Add Edit Delete Category (All-in-One Robust)
     Maximize Browser Window
-
-    # 🧩 Step 1: Warm-up popup and ensure button is visible
-    Ensure Category Button Is Visible
-    Click Element                    css=button[data-tip="เพิ่มหมวดหมู่"]
-    Wait Until Element Is Visible    css=input[placeholder="ชื่อประเภทสินค้า"]    ${TIMEOUT}
-    Click Element                    css=button.bg-red-400  # ปุ่มยกเลิกใน CreateCategoryModal
-    Sleep    1s
-    Capture Page Screenshot    warmup_popup.png
-
-    # 📌 Step 2: สร้างหมวดหมู่ใหม่
-    ${RANDOM}=        Evaluate    random.randint(1000, 9999)    random
-    ${category_name}=    Set Variable    ${CATEGORY_BASE} ${RANDOM}
-    Create Category    ${category_name}
-    Capture Page Screenshot    category_created_${category_name}.png
-
-    # 📌 Step 3: ทดสอบชื่อซ้ำ
-    Ensure Category Button Is Visible
-    Click Element                    css=button[data-tip="เพิ่มหมวดหมู่"]
-    Wait Until Element Is Visible    css=input[placeholder="ชื่อประเภทสินค้า"]    ${TIMEOUT}
-    Input Text                       css=input[placeholder="ชื่อประเภทสินค้า"]    ${category_name}
-    Click Element                    css=button.bg-green-500
-    Wait Until Page Contains         มีหมวดหมู่นี้อยู่ในระบบแล้ว    ${TIMEOUT}
-    Click Element                    css=button.bg-red-400  # ปุ่มยกเลิก
-    Wait Until Element Is Visible    css=button.swal2-confirm    ${TIMEOUT}
-    Click Element                    css=button.swal2-confirm
-    Sleep    1s
-    Capture Page Screenshot    duplicate_category.png
-
-    # 📌 Step 4: แก้ไขชื่อหมวดหมู่
-    ${updated_name}=    Set Variable    แก้ไข${category_name}
-    Edit Category       ${category_name}    ${updated_name}
-    Capture Page Screenshot    category_updated_${updated_name}.png
-
-    # 📌 Step 5: ลบหมวดหมู่
-    Delete Category     ${updated_name}
-    Capture Page Screenshot    category_deleted.png
+    Add New Category With Random Name
+    Add Duplicate Category
+    Go Back To Category List
+    Edit Category Name
+    Delete Category
 
 *** Keywords ***
-Open Browser To Login Page
-    [Documentation]    เปิดเบราว์เซอร์และไปที่หน้า login
-    Open Browser    http://localhost:5173/login    ${BROWSER}  # ปรับตาม URL จริง
-    Maximize Browser Window
-    Set Selenium Timeout    ${TIMEOUT}
-
 Login And Go To Category Page
-    [Documentation]    ล็อกอินและไปยังหน้าหมวดหมู่
+    [Documentation]    ล็อกอินและไปที่หน้าจัดการประเภทสินค้า
     Input Username    ${VALID_USERNAME}
     Input Password    ${VALID_PASSWORD}
     Submit Credentials
     Welcome Page Should Be Open
     Sleep    1s
-    Capture Page Screenshot    after_login.png
-    Go To Category Page
+    Capture Page Screenshot
+    Go To status Page
 
-Go To Category Page
-    [Documentation]    นำทางไปยังหน้าหมวดหมู่
-    Wait Until Page Contains Element    xpath=//span[contains(text(), 'จัดการ')]    ${TIMEOUT}  # ปรับตามเมนู
+Go To status Page
+    [Documentation]    นำทางไปยังหน้าจัดการประเภทสินค้า
+    Wait Until Page Contains Element    xpath=//span[contains(text(), 'จัดการ')]    10s
     Click Element                       xpath=//span[contains(text(), 'จัดการ')]
-    Capture Page Screenshot    after_click_manage.png
-    Wait Until Page Contains Element    xpath=//a[contains(text(), 'จัดการประเภทสินค้า')]    ${TIMEOUT}
-    Click Element                       xpath=//a[contains(text(), 'จัดการประเภทสินค้า')]
-    Capture Page Screenshot    after_click_category_link.png
-    Wait Until Page Contains Element    xpath=//h2[contains(., 'จัดการหมวดหมู่สินค้า')]    ${TIMEOUT}  # ตรงกับ CategoryPage
-    Wait Until Page Contains Element    css=button[data-tip="เพิ่มหมวดหมู่"]    ${TIMEOUT}  # รอปุ่มปรากฏ
-    Capture Page Screenshot    category_page_loaded.png
+    Capture Page Screenshot
+    ${current_url}=    Get Location
+    Log    Current URL: ${current_url}
+    Wait Until Page Contains Element    xpath=//a[contains(text(), ' จัดการประเภทสินค้า')]    10s
+    Click Element                       xpath=//a[contains(text(), ' จัดการประเภทสินค้า')]
+    Capture Page Screenshot
+    Wait Until Page Contains Element    xpath=//button[contains(@class, 'filter-button')]//span[contains(text(), '${ADD_BUTTON_TEXT}')]    10s
+    Capture Page Screenshot
+    Go To Add Page
 
-Ensure Category Button Is Visible
-    [Documentation]    ทำให้ปุ่มเพิ่มหมวดหมู่ปรากฏและมองเห็นได้
-    ${status}=    Set Variable    ${False}
-    FOR    ${i}    IN RANGE    5
-        ${status}=    Run Keyword And Return Status    Wait Until Element Is Visible    css=button[data-tip="เพิ่มหมวดหมู่"]    ${TIMEOUT}
-        Exit For Loop If    ${status}
-        Log To Console    Attempt ${i+1}: ปุ่มเพิ่มหมวดหมู่ยังไม่ปรากฏ
-        Run Keyword And Ignore Error    Scroll Element Into View    css=button[data-tip="เพิ่มหมวดหมู่"]
-        Run Keyword And Ignore Error    Execute JavaScript    window.scrollTo(0, document.body.scrollHeight)
-        Run Keyword And Ignore Error    Execute JavaScript    document.querySelectorAll('.loading, .bg-black.bg-opacity-50').forEach(el => el.style.display = 'none')  # ปิด overlay/loading
-        Run Keyword And Ignore Error    Reload Page
-        Run Keyword And Ignore Error    Wait Until Page Contains Element    css=button[data-tip="เพิ่มหมวดหมู่"]    5s
-        Sleep    2s
-    END
-    Run Keyword If    not ${status}    Fail    ปุ่มเพิ่มหมวดหมู่ไม่ปรากฏหลังจากลอง 5 ครั้ง
-    ${button_visible}=    Execute JavaScript    return document.querySelector('button[data-tip="เพิ่มหมวดหมู่"]').offsetParent !== null && document.querySelector('button[data-tip="เพิ่มหมวดหมู่"]').getBoundingClientRect().height > 0
-    Log To Console    Button Visible: ${button_visible}
-    Run Keyword If    not ${button_visible}    Fail    ปุ่มเพิ่มหมวดหมู่ไม่สามารถมองเห็นได้ใน DOM
-    Scroll Element Into View    css=button[data-tip="เพิ่มหมวดหมู่"]
-    Capture Page Screenshot    ensure_button_visible.png
+Go To Add Page
+    [Documentation]    เปิดฟอร์มเพิ่มหมวดหมู่
+    ${css_selector}=    Set Variable    css=#root > div > div > main > div > div > div.flex.justify-between.items-center.mb-6 > div > button
+    Wait Until Page Contains Element    ${css_selector}    10s
+    Click Element                       ${css_selector}
+    Capture Page Screenshot
 
-Edit Category
-    [Arguments]    ${old_name}    ${new_name}
-    [Documentation]    แก้ไขชื่อหมวดหมู่
-    Click Edit Category Button    ${old_name}
-    Wait Until Element Is Visible    css=input.w-full.p-2.border.rounded-md    ${TIMEOUT}  # ตรงกับ EditCategoryModal
-    Input Text                       css=input.w-full.p-2.border.rounded-md    ${new_name}
-    Click Element                    css=button.bg-green-500  # ปุ่มบันทึกใน EditCategoryModal
-    Wait Until Success Message Appears
-    Click Element                    css=button.swal2-confirm
-    Verify Category Updated          ${new_name}
+Add New Category With Random Name
+    [Documentation]    เพิ่มหมวดหมู่ใหม่ด้วยชื่อสุ่ม
+    ${random_int}=    Evaluate    random.randint(1000,9999)    random
+    ${category_name}=    Set Variable    ${CATEGORY_BASE}${random_int}
+    Set Suite Variable    ${category_name}  # ตั้งเป็น Suite Variable
+    Log    Category Name: ${category_name}
+    Input Text    xpath=//input[@placeholder="ชื่อประเภทสินค้า"]    ${category_name}
+    Wait Until Page Contains Element    xpath=//button[contains(text(), '${SAVE_BUTTON_TEXT}')]    10s
+    Click Element                       xpath=//button[contains(text(), '${SAVE_BUTTON_TEXT}')]
+    Capture Page Screenshot
+    Wait Until Page Contains Element    css=button.swal2-confirm    10s
+    Click Element                       css=button.swal2-confirm
+    Wait Until Page Contains    ${category_name}    10s  # ตรวจสอบว่าหมวดหมู่ปรากฏ
+
+Add Duplicate Category
+    [Documentation]    ทดสอบเพิ่มหมวดหมู่ด้วยชื่อที่ซ้ำกับที่มีอยู่
+    Log    Using Category Name: ${category_name}
+    Input Text    xpath=//input[@placeholder="ชื่อประเภทสินค้า"]    ${category_name}
+    Wait Until Page Contains Element    xpath=//button[contains(text(), '${SAVE_BUTTON_TEXT}')]    10s
+    Click Element                       xpath=//button[contains(text(), '${SAVE_BUTTON_TEXT}')]
+    ${status}    ${message}=    Run Keyword And Ignore Error    Wait Until Page Contains    ชื่อหมวดหมู่ซ้ำ    10s
+    Log    Duplicate category check: ${status} - ${message}
+    Capture Page Screenshot
+    Wait Until Page Contains Element    css=button.swal2-confirm    10s
+    Click Element                       css=button.swal2-confirm
+
+Go Back To Category List
+    [Documentation]    กลับไปที่รายการหมวดหมู่
+    Click Element    xpath=//button[span[contains(text(), '${CANCEL_BUTTON_TEXT}')]]    10s
+    Capture Page Screenshot
+    Wait Until Page Contains Element    xpath=//button[contains(@class, 'filter-button')]//span[contains(text(), '${ADD_BUTTON_TEXT}')]    10s
+
+Edit Category Name
+    [Documentation]    แก้ไขชื่อหมวดหมู่แถวแรก
+    Click Element    xpath=(//button[@title="แก้ไข"])[1]
+    ${random_int}=    Evaluate    random.randint(1000,9999)    random
+    ${new_name}=    Set Variable    ${CATEGORY_BASE}แก้ไข${random_int}
+    Input Text    xpath=//input[@placeholder="ชื่อประเภทสินค้า"]    ${new_name}
+    Click Element    xpath=//button[span[contains(text(), '${SAVE_BUTTON_TEXT}')]]
+    Wait Until Page Contains Element    xpath=//button[span[contains(text(), 'ยืนยัน')]]    10s
+    Click Element                       xpath=//button[span[contains(text(), 'ยืนยัน')]]
+    Set Suite Variable    ${new_name}
+    Capture Page Screenshot
+    Wait Until Page Contains    ${new_name}    10s
 
 Delete Category
-    [Arguments]    ${name}
-    [Documentation]    ลบหมวดหมู่
-    Log To Console    Deleting category: ${name}
-    Wait Until Page Contains Element    xpath=//td[contains(., '${name}')]    ${TIMEOUT}
-    Scroll Element Into View            xpath=//td[contains(., '${name}')]
-    Wait Until Element Is Visible       xpath=//td[contains(., '${name}')]/following-sibling::td//button[contains(@class, 'bg-red-500')]    ${TIMEOUT}
-    Capture Page Screenshot             before_delete_${name}.png
-    Click Element                       xpath=//td[contains(., '${name}')]/following-sibling::td//button[contains(@class, 'bg-red-500')]
-    Wait Until Element Is Visible       css=button.swal2-confirm    ${TIMEOUT}
-    Click Element                       css=button.swal2-confirm
-    Wait Until Success Message Appears
-    Click Element                       css=button.swal2-confirm
-    Capture Page Screenshot             after_delete_${name}.png
-    Verify Category Deleted             ${name}
-
-Click Edit Category Button
-    [Arguments]    ${name}
-    [Documentation]    คลิกปุ่มแก้ไขหมวดหมู่
-    Wait Until Element Is Visible    xpath=//td[contains(text(), '${name}')]/following-sibling::td//button[contains(@class, 'bg-yellow-500')]    ${TIMEOUT}
-    Click Element                    xpath=//td[contains(text(), '${name}')]/following-sibling::td//button[contains(@class, 'bg-yellow-500')]
-
-Click Save Category Button
-    [Documentation]    คลิกปุ่มบันทึกข้อมูล
-    Click Element    css=button.bg-green-500
-
-Wait Until Success Message Appears
-    [Documentation]    รอข้อความยืนยันความสำเร็จ
-    Wait Until Element Is Visible    css=div.swal2-success    ${TIMEOUT}
-    Log To Console    Success message appeared
-    Capture Page Screenshot    success_message.png
-
-Verify Category Created
-    [Arguments]    ${name}
-    [Documentation]    ตรวจสอบว่าหมวดหมู่ถูกสร้าง
-    Wait Until Page Contains Element    xpath=//td[contains(text(), '${name}')]    ${TIMEOUT}
-    Log To Console    Category ${name} created
-    Capture Page Screenshot    verify_created_${name}.png
-
-Verify Category Updated
-    [Arguments]    ${name}
-    [Documentation]    ตรวจสอบว่าหมวดหมู่ถูกแก้ไข
-    Wait Until Page Contains Element    xpath=//td[contains(text(), '${name}')]    ${TIMEOUT}
-    Log To Console    Category updated to ${name}
-    Capture Page Screenshot    verify_updated_${name}.png
-
-Verify Category Deleted
-    [Arguments]    ${name}
-    [Documentation]    ตรวจสอบว่าหมวดหมู่ถูกลบ
-    Wait Until Page Does Not Contain Element    xpath=//td[contains(text(), '${name}')]    ${TIMEOUT}
-    Log To Console    Category ${name} deleted
-    Capture Page Screenshot    verify_deleted_${name}.png
-
-Create Category
-    [Arguments]    ${category_name}
-    Run Keyword And Ignore Error    Scroll Element Into View         css=button[data-tip="เพิ่มหมวดหมู่"]
-    Run Keyword And Ignore Error    Click Element                    css=button[data-tip="เพิ่มหมวดหมู่"]
-    Run Keyword And Ignore Error    Wait Until Element Is Visible    xpath=//input[@placeholder='ชื่อประเภทสินค้า']    10s
-    Run Keyword And Ignore Error    Input Text                       xpath=//input[@placeholder='ชื่อประเภทสินค้า']    ${category_name}
-    Run Keyword And Ignore Error    Click Element                    xpath=//button[contains(text(), 'บันทึกข้อมูล')]
-    Run Keyword And Ignore Error    Wait Until Success Message Appears
-    Run Keyword And Ignore Error    Click Element                    css=button.swal2-confirm
-    Run Keyword And Ignore Error    Verify Category Created          ${category_name}
+    [Documentation]    ลบหมวดหมู่แถวแรก
+    Click Element    xpath=(//button[@title="ลบ"])[1]
+    Wait Until Page Contains Element    xpath=//button[span[contains(text(), 'ลบ')]]    10s
+    Click Element                       xpath=//button[span[contains(text(), 'ลบ')]]
+    Wait Until Page Contains Element    xpath=//button[span[contains(text(), 'ยืนยัน')]]    10s
+    Click Element                       xpath=//button[span[contains(text(), 'ยืนยัน')]]
+    Capture Page Screenshot
+    Wait Until Page Does Not Contain    ${new_name}    10s

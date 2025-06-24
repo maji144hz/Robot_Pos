@@ -9,6 +9,9 @@ Library           random
 ${VALID_USERNAME}    1
 ${VALID_PASSWORD}    123
 ${CATEGORY_BASE}     ทดสอบหมวดหมู่
+${ADD_BUTTON_TEXT}  เพิ่มหมวดหมู่
+${SAVE_BUTTON_TEXT} บันทึกข้อมูล
+${CANCEL_BUTTON_TEXT}   ยกเลิก
 
 *** Test Cases ***
 Add Edit Delete Category (All-in-One Robust)
@@ -59,20 +62,27 @@ Add New Category With Random Name
     Click Element    xpath=//button[contains(text(), 'บันทึกข้อมูล')]
     Capture Page Screenshot
     Click Element    css=button.swal2-confirm
+    add
 
 add
     ${css_selector}=    Set Variable    css=#root > div > div > main > div > div > div.flex.justify-between.items-center.mb-6 > div > button
     Wait Until Page Contains Element    ${css_selector}    10s
     Click Element                       ${css_selector}
     Capture Page Screenshot
+    Add Duplicate Category
 
 Add Duplicate Category
-    Input Text    xpath=//input[@placeholder="ชื่อประเภทสินค้า"]    ${category_name}
-    Wait Until Page Contains Element   xpath=//button[contains(text(), 'บันทึกข้อมูล')]
-    Click Element    xpath=//button[contains(text(), 'บันทึกข้อมูล')]
-    # ตรวจสอบข้อความแจ้งเตือนชื่อซ้ำ (ถ้ามี)
+    [Documentation]    ทดสอบเพิ่มหมวดหมู่ด้วยชื่อที่ซ้ำกับที่มีอยู่
+    Log    Using Category Name: ${category_name}  # เพิ่ม log เพื่อ debug
+    Input Text    xpath=//input[@placeholder="ชื่อประเภทสินค้า"]    ${category_name}  # ใช้ Suite Variable
+    Wait Until Page Contains Element   xpath=//button[contains(text(), '${SAVE_BUTTON_TEXT}')]    10s
+    Click Element    xpath=//button[contains(text(), '${SAVE_BUTTON_TEXT}')]
+    # ตรวจสอบข้อความแจ้งเตือนชื่อซ้ำ
+    ${status}    ${message}=    Run Keyword And Ignore Error    Wait Until Page Contains    ชื่อหมวดหมู่ซ้ำ    10s
+    Log    Duplicate category check: ${status} - ${message}
     Capture Page Screenshot
-     Click Element    css=button.swal2-confirm
+    Wait Until Page Contains Element    css=button.swal2-confirm    10s
+    Click Element    css=button.swal2-confirm
 
 Go Back To Category List
     # สมมติว่ามีปุ่มย้อนกลับหรือปุ่มปิด modal
